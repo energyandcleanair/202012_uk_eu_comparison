@@ -11,3 +11,21 @@ plot.combined_ts_hc <- function(m, running_days, process_id, filename="combined_
   htmltools::browsable(plt) # print
   htmltools::save_html(plt, file.path(normalizePath(folder), filename)) # save
 }
+
+plots.health_impact_bar <- function(his, indicator="deaths"){
+
+  legend <- list(
+    "deaths"="Avoided deaths"
+  )
+
+  his.long <- his %>%
+    tidyr::pivot_longer(cols=-location_id, names_to="indicator") %>%
+    filter(indicator %in% !!indicator)
+
+  ggplot(his.long) +
+    geom_bar(aes(x=value,y=location_id,group=indicator,fill=indicator), stat="identity") +
+    labs(x=legend[[indicator]],
+         y=NULL,
+         title="Avoided health impact")
+
+}

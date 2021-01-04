@@ -22,3 +22,6 @@ m <- rbind(
 
 
 # Health ------------------------------------------------------------------
+
+health.impact <- utils.health_impact(m)
+health.impact.simplified <- rcrea::health.simplify(health.impact)
