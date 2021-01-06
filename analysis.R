@@ -1,27 +1,73 @@
-source('./config.R')
+source('config.R')
+source('utils.R')
+source('data.R')
 
-
-# Run deweathering (on server) --------------------------------------------
-
-creadeweather::deweather(city=city_uk, source="defra", poll=c(rcrea::NO2,rcrea::PM25,rcrea::PM10,rcrea::O3))
-creadeweather::deweather(city=city_eu, source="eea", poll=c(rcrea::NO2,rcrea::PM25,rcrea::PM10,rcrea::O3))
 
 # Get measurements (incl. deweathered) ------------------------------------
 
-m_uk <- rcrea::measurements(city=city_uk, source="defra", poll="no2", deweathered = NULL)
-m_eu <- rcrea::measurements(city=city_eu, source="eea", poll="no2", deweathered = NULL)
+m_uk <- data.meas_city_uk(use_cache=T)
+m_eu <- data.meas_city_eu(use_cache=T)
+m <- rbind(m_uk, m_eu)
 
-l_uk <- rcrea::locations("city", source="defra", with_geometry = T)
-l_eu <- rcrea::locations("city", source="eea", with_geometry = T)
 
-m <- rbind(
-  m_uk %>% left_join(l_uk %>% select(location_id=id, geometry)),
-  m_eu %>% left_join(l_eu %>% select(location_id=id, geometry))
-)
+# Stations per city -------------------------------------------------------
+
+s.uk <- data.stations_per_cities_uk(export=T)
+s.eu <- data.stations_per_cities_eu(export=T)
+
+
+# Reduction tables ---------------------------------------------------------
+
+t.red.all <- tables.reductions(m, "all", export=T)
+t.red.background <- tables.reductions(m, "background", export=T)
+
+m.impact <- utils.lockdown_impact(m)
+tables.reductions_deweathered(m.impact, "all", export=T)
+tables.reductions_deweathered(m.impact, "background", export=T)
+
+
+# Plots: Averaged levels ---------------------------------------------------
+
+plot.bar.average(m,"all")
+plot.bar.average(m,"background")
+
+plots.bar.reduction(m, "all")
+plots.bar.reduction(m, "background")
+
+plots.bar.reduction.deweathered(m.impact, "all")
+plots.bar.reduction.deweathered(m.impact, "background")
+
+
+# Violations -----------------------------------------------------
+violations.all <- utils.violations("all")
+plots.bar.violations(violations.all, location_type="all", org="WHO")
+plots.bar.violations(violations.all, location_type="all", org="UK")
+
+violations.background <- utils.violations("background")
+plots.bar.violations(violations.background, location_type="background", org="WHO")
+plots.bar.violations(violations.background, location_type="background", org="UK")
+
+
+# Time series charts ------------------------------------------------------
+
+plot.ts(m %>% filter(source=="defra"), 30,
+                  "anomaly_gbm_lag1_city_background_mad_pbl",
+                  polls="no2", filename="ts.uk.anomaly.background.png")
+
+plot.ts(m %>% filter(source=="defra"), 30,
+                  "anomaly_gbm_lag1_city_mad_pbl",
+                  polls="no2", filename="ts.uk.anomaly.png")
+
+
+
+# Observed difference in 2020 -------------------------------------------------
+
+# Lockdown impact in 2020 -------------------------------------------------
+
 
 
 
 # Health ------------------------------------------------------------------
-
-health.impact <- utils.health_impact(m)
-health.impact.simplified <- rcrea::health.simplify(health.impact)
+#
+# health.impact <- utils.health_impact(m)
+# health.impact.simplified <- rcrea::health.simplify(health.impact)
