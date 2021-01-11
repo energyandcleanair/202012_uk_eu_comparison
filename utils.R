@@ -18,7 +18,29 @@ utils.lockdown_impact <- function(m){
     tidyr::pivot_longer(c(impact_all, impact_background), names_to="type", names_prefix="impact_")
 }
 
+utils.quality_check <- function(m, min_count=330){
 
+  m.count <- m %>%
+    filter(!is.na(value),
+           process_id %in% c("city_background_day_mad","city_day_mad")) %>%
+    group_by(location_name, process_id, year=lubridate::year(date),
+             poll) %>%
+    summarise(count=n(), max=max(value), min=min(value)) %>%
+    arrange(count) %>%
+    filter(year %in% seq(2017,2020)) %>%
+    ungroup()
+
+  m.count$ok <- (m.count$count > min_count)s
+
+  cities_nonok <- unique(m.count[!m.count$ok,]$location_name)
+  cities_ok <- unique(m.count[m.count$ok,]$location_name)
+  print(paste(length(cities_nonok), "non valid cities: ", paste(cities_nonok, collapse=", ")))
+  print(paste(length(cities_ok), "valid cities: ", paste(cities_ok, collapse=", ")))
+
+  return(m %>%
+           inner_join(m.count %>% filter(ok) %>% distinct(location_name, process_id)))
+
+}
 
 utils.health_impact <- function(m){
 
@@ -32,26 +54,12 @@ utils.health_impact <- function(m){
   m_impact <- rcrea::health.impact(m_scenarios, date_from="2020-01-01", date_to="2020-12-31")
 }
 
-
-
-utils.violations <- function(location_type){
-
-  if(location_type=="all"){
-    location_type <- NULL #"all" corresponds to NULL in rcrea package
-  }
-
-  # We collect violations per station...
-  m.violations <- rcrea::violations(source="defra",
-                                    level="station",
-                                    date_from="2019-01-01",
-                                    date_to="2020-12-31",
-                                    location_type=location_type,
-                                    orgs=c("UK","WHO"))
-
-  # ... and aggregate at the city level
+utils.violations.stations_to_cities <- function(m.violations.stations){
+  # In this approach (not used in the report)
+  # we collect violations per station and aggregate at the city level
   # A day with an exceedance at a single station is a day with an exceedance at the city level
   m.violations.city <-
-    m.violations %>%
+    m.violations.stations %>%
     filter(exceedance) %>% # Shouldn't be necessary but just in case rcrea changes in the future
     group_by(city_name, frequency, date, standard_id, poll, threshold, organization, exceedance_allowed_per_year) %>%
     summarise(exceedance=max(exceedance)) %>%

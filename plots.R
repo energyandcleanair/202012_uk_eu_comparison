@@ -36,7 +36,7 @@ plots.bar.reduction <- function(m, location_type=NULL,
     rcrea::CREAtheme.scale_fill_crea_d(name=NULL) +
     labs(y=NULL, x=NULL,
          # title="NO2 levels in 2020"
-         subtitle="Observed NO2 levels in 2020 vs 2019",
+         # subtitle="Observed NO2 levels in 2020 vs 2019",
          caption=paste("Source: CREA analysis based on European Environment Agency and DEFRA.",
                        caption_suffix)) +
     guides(fill = guide_legend(nrow = 1))
@@ -84,7 +84,7 @@ plots.bar.reduction.deweathered <- function(m.impact, location_type=NULL,
     rcrea::CREAtheme.scale_fill_crea_d(name=NULL) +
     labs(y=NULL, x=NULL,
          # title="NO2 levels in 2020"
-         subtitle="Difference between observed and predicted NO2 levels in 2020",
+         # subtitle="Difference between observed and predicted NO2 levels in 2020",
          caption=paste("Source: CREA analysis based on European Environment Agency and DEFRA.",
                        caption_suffix)) +
     guides(fill = guide_legend(nrow = 1))
@@ -106,7 +106,7 @@ plots.bar.violations <- function(violations, location_type="background", org="WH
   cols <- c(no2=NA,so2=NA,pm25=NA,pm10=NA,o3=NA)
 
   v.plot <- violations %>%
-    group_by(city_name, poll, organization,
+    group_by(location_name, poll, organization,
              year=lubridate::year(date),
              date=lubridate::date(date)) %>%
     summarise(violation=sum(violation)>0) %>%
@@ -119,7 +119,7 @@ plots.bar.violations <- function(violations, location_type="background", org="WH
     mutate(poll=ifelse(no2+o3+pm10+pm25+so2==1,
                        c("NO2", "Ozone","PM10","PM2.5","SO2")[as.logical(c(no2,o3,pm10,pm25,so2))],
                        "Multiple")) %>%
-    group_by(city_name, organization, year, poll) %>%
+    group_by(location_name, organization, year, poll) %>%
     summarise(n_violations=n())
 
   v.plot %>% tidyr::spread("year","n_violations")
@@ -127,28 +127,28 @@ plots.bar.violations <- function(violations, location_type="background", org="WH
   v.plot.2019 <- v.plot %>% filter(year==2019, organization==!!org)
 
   v.plot.2020.total <- v.plot.2020 %>%
-    group_by(city_name) %>%
+    group_by(location_name) %>%
     summarise(n_violations=sum(n_violations))
 
-  lvs <- levels(reorder(v.plot.2020.total$city_name, v.plot.2020.total$n_violations))
+  lvs <- levels(reorder(v.plot.2020.total$location_name, v.plot.2020.total$n_violations))
 
   v.plot.2019.total <- v.plot.2019 %>%
-    group_by(city_name) %>%
+    group_by(location_name) %>%
     summarise(n_violations=sum(n_violations)) %>%
-    filter(city_name %in% lvs)
+    filter(location_name %in% lvs)
 
 
-  v.plot.2019.label <- v.plot.2019.total %>% filter(city_name=="Manchester")
+  v.plot.2019.label <- v.plot.2019.total %>% filter(location_name=="Manchester")
 
   plt <- ggplot() +
     geom_point(data=v.plot.2019.total %>%
-                 filter(!is.na(city_name)),
-               aes(y=city_name, x=n_violations)) +
+                 filter(!is.na(location_name)),
+               aes(y=location_name, x=n_violations)) +
     geom_bar(data=v.plot.2020,
-             aes(y=city_name, x=n_violations, fill=poll),
+             aes(y=location_name, x=n_violations, fill=poll),
              stat="identity") +
     ggrepel::geom_text_repel(data=v.plot.2019.label,
-                             aes(n_violations, city_name),
+                             aes(n_violations, location_name),
                              box.padding = 1.5,
                              nudge_x=2,
                              nudge_y=-1,
@@ -169,6 +169,8 @@ plots.bar.violations <- function(violations, location_type="background", org="WH
   ggsave(f,plt,
          width=width,
          height=height)
+
+  return(plt)
 
 }
 
@@ -500,5 +502,34 @@ plots.health_impact_bar <- function(his, indicator="deaths"){
     labs(x=legend[[indicator]],
          y=NULL,
          title="Avoided health impact")
+
+}
+
+plots.consumption <- function(d.consumption){
+
+  d.plot <- d.consumption %>%
+    filter(quarter %in% seq(1,3),
+           year %in% c(2019,2020)) %>%
+    group_by(year, sector, indicator, legend, unit) %>%
+    summarise(value=sum(value)) %>%
+    group_by(sector, indicator, legend, unit) %>%
+    arrange(year) %>%
+    mutate(change=value/lag(value)-1,
+           change_str=scales::percent(change, 1)) %>%
+    filter(year==2020,
+           legend %in% c("Oil use (transportation)",
+                         "Coal consumption"))
+
+  plt <- ggplot(d.plot, aes(y=legend, x=change)) +
+    geom_bar(stat="identity", aes(fill=legend), show.legend = F) +
+    geom_text(aes(label=change_str), nudge_x = -0.02) +
+    theme_crea() +
+    scale_x_continuous(labels=scales::percent) +
+    theme(panel.grid.major = element_blank()) +
+    rcrea::CREAtheme.scale_fill_crea_d() +
+    labs(y=NULL, x = "Y-o-y variation",
+         caption="Source: D")
+
+  plt
 
 }
