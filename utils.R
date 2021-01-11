@@ -30,7 +30,7 @@ utils.quality_check <- function(m, min_count=330){
     filter(year %in% seq(2017,2020)) %>%
     ungroup()
 
-  m.count$ok <- (m.count$count > min_count)s
+  m.count$ok <- (m.count$count > min_count)
 
   cities_nonok <- unique(m.count[!m.count$ok,]$location_name)
   cities_ok <- unique(m.count[m.count$ok,]$location_name)
