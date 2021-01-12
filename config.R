@@ -10,6 +10,7 @@ require(sf)
 require(ggrepel)
 require(highcharter)
 require(magrittr)
+require(countrycode)
 
 # Directories -------------------------------------------------------------
 

@@ -61,7 +61,7 @@ tables.average <- function(m, location_type, export=T){
 tables.reductions_deweathered <- function(m.impact, location_type, export=T){
 
   m.reduction <- m.impact %>%
-    filter(type==location_type) %>%
+    filter(type==location_type, !is.na(value)) %>%
     arrange(value) %>%
     mutate(value_pct=scales::percent(value,accuracy = 1))
 

@@ -104,8 +104,42 @@ data.violations <- function(level="city", city=city_uk_aurn, location_type="all"
 
 
 data.consumption <- function(){
-    d <- read.csv("data/uk_energy_2020.csv")
+    read.csv("data/uk_energy_2020.csv")
 }
 
+
+data.transport.tomtom <- function(m){
+  d <- rcrea::transport.tomtom_congestion(m %>% distinct(city=location_name, country))
+
+  d %>%
+    filter(lubridate::year(date)==2020) %>%
+    group_by(city, country) %>%
+    summarise(change=mean(diffRatio)) %>%
+    mutate(source="tomtom")
+}
+
+
+data.transport.apple <- function(m){
+  city_country <- m %>% distinct(city=location_name, country) %>%
+    mutate(country_name=countrycode::countrycode(country, "iso2c", "country.name"))
+
+  d <- read.csv("data/applemobilitytrends.csv") %>%
+    filter(geo_type=="city",
+           transportation_type=="driving") %>%
+    rename(country_name=country) %>%
+    tibble() %>%
+    rename(city=region)
+
+  d.transport <- city_country %>%
+    left_join(d)
+
+  d.transport %>%
+    tidyr::pivot_longer(-c(country, country_name, city, geo_type, transportation_type, alternative_name, sub.region), names_prefix = "X", names_to="date") %>%
+    mutate(date=as.POSIXct(date, format="%Y.%m.%d")) %>%
+    filter(lubridate::year(date)==2020) %>%
+    group_by(city, country) %>%
+    summarise(change=mean(value, na.rm=T)/100-1) %>%
+    mutate(source="apple")
+}
 
 

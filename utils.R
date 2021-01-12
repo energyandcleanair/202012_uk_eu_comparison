@@ -21,16 +21,27 @@ utils.lockdown_impact <- function(m){
 utils.quality_check <- function(m, min_count=330){
 
   m.count <- m %>%
-    filter(!is.na(value),
-           process_id %in% c("city_background_day_mad","city_day_mad")) %>%
+    filter(!is.na(value)) %>%
     group_by(location_name, process_id, year=lubridate::year(date),
              poll) %>%
     summarise(count=n(), max=max(value), min=min(value)) %>%
     arrange(count) %>%
-    filter(year %in% seq(2017,2020)) %>%
-    ungroup()
+    filter(year %in% seq(2019,2020)) %>%
+    # Must have at least min_count measurements in 2019 and 2020
+    # (doesn't applied for deweathered in 2019 since it starts in December)
+    mutate(ok=(count > min_count) | ((year==2019) & (stringr::str_detect(process_id,"gbm")))) %>%
+    group_by(location_name, process_id) %>%
+    summarise(ok=all(ok)) %>%
+    # Prevent deweathering from being ok when observations are not
+    tidyr::spread("process_id","ok") %>%
 
-  m.count$ok <- (m.count$count > min_count)
+    mutate(counterfactual_gbm_lag1_city_mad_pbl=counterfactual_gbm_lag1_city_mad_pbl & city_day_mad,
+           counterfactual_gbm_lag1_city_background_mad_pbl=counterfactual_gbm_lag1_city_background_mad_pbl & city_background_day_mad,
+           anomaly_gbm_lag1_city_mad_pbl=anomaly_gbm_lag1_city_mad_pbl & city_day_mad,
+           anomaly_gbm_lag1_city_background_mad_pbl=anomaly_gbm_lag1_city_background_mad_pbl & city_background_day_mad
+           ) %>%
+    tidyr::gather("process_id", "ok", -location_name)
+
 
   cities_nonok <- unique(m.count[!m.count$ok,]$location_name)
   cities_ok <- unique(m.count[m.count$ok,]$location_name)

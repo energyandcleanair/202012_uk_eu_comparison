@@ -242,7 +242,7 @@ plot.bar.average <- function(m, location_type="background", filename=NULL,
       guides(fill = guide_legend(nrow = 1)) +
       labs(y=NULL, x=NULL,
            # title="NO2 levels in 2020"
-           subtitle="Average NO2 levels in 2020 and 2019",
+           # subtitle="Average NO2 levels in 2020 and 2019",
            caption=paste("Source: CREA analysis based on European Environment Agency and DEFRA.",
                          caption_suffix)))
 
@@ -487,25 +487,8 @@ plot.combined_ts_hc <- function(m, running_days, process_id, filename="combined_
 }
 
 
-plots.health_impact_bar <- function(his, indicator="deaths"){
 
-  legend <- list(
-    "deaths"="Avoided deaths"
-  )
-
-  his.long <- his %>%
-    tidyr::pivot_longer(cols=-location_id, names_to="indicator") %>%
-    filter(indicator %in% !!indicator)
-
-  ggplot(his.long) +
-    geom_bar(aes(x=value,y=location_id,group=indicator,fill=indicator), stat="identity") +
-    labs(x=legend[[indicator]],
-         y=NULL,
-         title="Avoided health impact")
-
-}
-
-plots.consumption <- function(d.consumption){
+plots.consumption <- function(d.consumption, width=6, height=3, export=T){
 
   d.plot <- d.consumption %>%
     filter(quarter %in% seq(1,3),
@@ -518,7 +501,8 @@ plots.consumption <- function(d.consumption){
            change_str=scales::percent(change, 1)) %>%
     filter(year==2020,
            legend %in% c("Oil use (transportation)",
-                         "Coal consumption"))
+                         "Coal consumption",
+                         "Gas consumption"))
 
   plt <- ggplot(d.plot, aes(y=legend, x=change)) +
     geom_bar(stat="identity", aes(fill=legend), show.legend = F) +
@@ -528,8 +512,49 @@ plots.consumption <- function(d.consumption){
     theme(panel.grid.major = element_blank()) +
     rcrea::CREAtheme.scale_fill_crea_d() +
     labs(y=NULL, x = "Y-o-y variation",
-         caption="Source: D")
+         caption="Source: BEIS")
 
-  plt
+  if(export){
+    ggsave(file.path(dir_results_plots,
+                     "uk.consumption.png"),
+           plot=plt,
+           width=width, height=height)
+  }
+}
+
+
+plots.bar.reduction.transport <- function(d, source="apple",
+                                width=chart_width, height=6){
+
+
+  d.plot <- d %>%
+    mutate(region=ifelse(country=="GB","Great Britain", "Other")) %>%
+    filter(source==!!source) %>%
+    filter(!is.na(change))
+
+  d.plot$city <- reorder(d.plot$city, -d.plot$change)
+
+  caption <- recode(source,
+                    "apple"="Source: Apple Mobility Trends. 2020 average of daily requests for directions compared to 13 January 2020",
+                    "tomtom"="Source: TomTom Traffic Congestion Index 2020 vs 2019")
+
+  (plt <- ggplot(d.plot) +
+    geom_bar(aes(change, city, fill=region), stat="identity", position="dodge") +
+    scale_x_continuous(labels=scales::percent) +
+    theme_crea(legend.position="bottom") +
+    rcrea::CREAtheme.scale_fill_crea_d(name=NULL) +
+    labs(y=NULL, x=NULL,
+         # title="NO2 levels in 2020"
+         # subtitle="Observed NO2 levels in 2020 vs 2019",
+         caption=caption) +
+    guides(fill = guide_legend(nrow = 1)))
+
+
+  ggsave(plot=plt,
+         filename = file.path(dir_results_plots,
+                              paste0("bar.transportation.",source,".png")),
+         width=width,
+         height=height)
+
 
 }

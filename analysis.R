@@ -29,7 +29,6 @@ t.red.all <- tables.reductions(m, "all", export=T)
 t.red.background <- tables.reductions(m, "background", export=T)
 t.red.background %>% group_by(source) %>% summarise(relative=mean(relative), count=n())
 
-
 m.impact <- utils.lockdown_impact(m)
 tables.reductions_deweathered(m.impact, "all", export=T)
 t.red.dew.background <- tables.reductions_deweathered(m.impact, "background", export=T)
@@ -60,26 +59,32 @@ plots.bar.violations(violations.all, location_type="all", org="WHO")
 plots.bar.violations(violations.all, location_type="all", org="UK")
 
 violations.background <-  data.violations(level="city", city=cities_uk_ok,
-                                           location_type="background", use_cache=F)
+                                          location_type="background", use_cache=F)
 plots.bar.violations(violations.background, location_type="background", org="WHO")
 plots.bar.violations(violations.background, location_type="background", org="UK")
+
+
+# General stats ------------------------------------------------------
+d.consumption <- data.consumption()
+plots.consumption(d.consumption, export=T, width=6, height=4)
+
+
+# Transportation ----------------------------------------------------------
+
+d.transport.tomtom <- data.transport.tomtom(m)
+d.transport.apple <- data.transport.apple(m)
+d.transport <- bind_rows(d.transport.tomtom, d.transport.apple)
+
+plots.bar.reduction.transport(d.transport, source="tomtom")
+plots.bar.reduction.transport(d.transport, source="apple")
 
 
 # Time series charts ------------------------------------------------------
 
 plot.ts(m %>% filter(source=="defra"), 30,
-                  "anomaly_gbm_lag1_city_background_mad_pbl",
-                  polls="no2", filename="ts.uk.anomaly.background.png")
+        "anomaly_gbm_lag1_city_background_mad_pbl",
+        polls="no2", filename="ts.uk.anomaly.background.png")
 
 plot.ts(m %>% filter(source=="defra"), 30,
-                  "anomaly_gbm_lag1_city_mad_pbl",
-                  polls="no2", filename="ts.uk.anomaly.png")
-
-
-
-
-
-# Health ------------------------------------------------------------------
-#
-# health.impact <- utils.health_impact(m)
-# health.impact.simplified <- rcrea::health.simplify(health.impact)
+        "anomaly_gbm_lag1_city_mad_pbl",
+        polls="no2", filename="ts.uk.anomaly.png")
